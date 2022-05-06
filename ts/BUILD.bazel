@@ -23,6 +23,9 @@ bzl_library(
     deps = [
         "//ts/private:versions",
         "@bazel_tools//tools/build_defs/repo:http.bzl",
+        # TODO: remove with git_repository removal when we cut new rules_js release
+        "@bazel_tools//tools/build_defs/repo:git.bzl",
+        "@bazel_tools//tools/build_defs/repo:git_worker.bzl",
         "@bazel_tools//tools/build_defs/repo:utils.bzl",
     ],
 )

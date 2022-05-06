@@ -5,13 +5,21 @@ See https://docs.bazel.build/versions/main/skylark/deploying.html#dependencies
 """
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("//ts/private:versions.bzl", TS_VERSIONS = "VERSIONS")
 
 versions = struct(
-    bazel_lib = "0.9.7",
+    bazel_lib = "0.11.1",
     rules_nodejs = "5.4.0",
-    rules_js = "1e97acf805b11d7b8716a5c2f4d4466f57d3fb3d",
+    rules_js = "e68f60dcabb6c0d4190acf6c3d09076f7516778b",
+)
+
+worker_lock = struct(
+    bazel_worker_version = "5.4.2",
+    bazel_worker_integrity = "sha512-wQZ1ybgiCPkuITaiPfh91zB/lBYqBglf1XYh9hJZCQnWZ+oz9krCnZcywI/i1U9/E9p3A+4Y1ni5akAwTMmfUA==",
+    google_protobuf_version = "3.20.1",
+    google_protobuf_integrity = "sha512-XMf1+O32FjYIV3CYu6Tuh5PNbfNEU5Xu22X+Xkdb/DUexFlCzhvv7d5Iirm4AOwn8lv4al1YvIhzGrg2j9Zfzw=="
 )
 
 LATEST_VERSION = TS_VERSIONS.keys()[-1]
@@ -46,7 +54,14 @@ def _http_archive_version_impl(rctx):
         url = [u.format(version) for u in rctx.attr.urls],
         integrity = integrity,
     )
-    rctx.symlink(rctx.path(rctx.attr.build_file), "BUILD.bazel")
+    build_file_substitutions = {"ts_version": version}
+    build_file_substitutions.update(**rctx.attr.build_file_substitutions)
+    rctx.template(
+        "BUILD.bazel",
+        rctx.path(rctx.attr.build_file), 
+        substitutions = build_file_substitutions,
+        executable = False,
+    )
 
 http_archive_version = repository_rule(
     doc = "Re-implementation of http_archive that can read the version from package.json",
@@ -55,7 +70,8 @@ http_archive_version = repository_rule(
         "integrity": attr.string(doc = "Needed only if the ts version isn't mirrored in `versions.bzl`."),
         "version": attr.string(doc = "Explicit version for `urls` placeholder. If provided, the package.json is not read."),
         "urls": attr.string_list(doc = "URLs to fetch from. Each must have one `{}`-style placeholder."),
-        "build_file": attr.label(doc = "The BUILD file to symlink into the created repository."),
+        "build_file": attr.label(doc = "The BUILD file to write into the created repository."),
+        "build_file_substitutions": attr.string_dict(doc = "Substitutions to make when expanding the BUILD file."),
         "version_from": attr.label(doc = "Location of package.json which may have a version for the package."),
     },
 )
@@ -105,19 +121,34 @@ def rules_ts_dependencies(ts_version_from = None, ts_version = None, ts_integrit
     )
 
     maybe(
-        http_archive,
+        git_repository,
         name = "aspect_rules_js",
-        sha256 = "e5de2d6aa3c6987875085c381847a216b1053b095ec51c11e97b781309406ad4",
-        strip_prefix = "rules_js-0.5.0",
-        url = "https://github.com/aspect-build/rules_js/archive/refs/tags/v0.5.0.tar.gz",
+        commit = "e68f60dcabb6c0d4190acf6c3d09076f7516778b",
+        remote = "https://github.com/aspect-build/rules_js.git",
     )
 
     maybe(
         http_archive,
         name = "aspect_bazel_lib",
-        sha256 = "aedc52557a74dc69d0be0638d6bad38f0f617e2fef475a2945e2662ae5ee2f94",
+        sha256 = "a8b47eeaf3c1bd41c4f4b633ef4c959daf83fdee343379495098b50571d4b3b8",
         strip_prefix = "bazel-lib-" + versions.bazel_lib,
         url = "https://github.com/aspect-build/bazel-lib/archive/refs/tags/v{}.tar.gz".format(versions.bazel_lib),
+    )
+
+    maybe(
+        http_archive,
+        name = "npm_google_protobuf",
+        build_file = "@aspect_rules_ts//ts:BUILD.package",
+        integrity = worker_lock.google_protobuf_integrity,
+        urls = ["https://registry.npmjs.org/google-protobuf/-/google-protobuf-{}.tgz".format(worker_lock.google_protobuf_version)],
+    )
+
+    maybe(
+        http_archive,
+        name = "npm_at_bazel_worker",
+        integrity = worker_lock.bazel_worker_integrity,
+        build_file = "@aspect_rules_ts//ts:BUILD.package",
+        urls = ["https://registry.npmjs.org/@bazel/worker/-/worker-{}.tgz".format(worker_lock.bazel_worker_version)],
     )
 
     maybe(
@@ -127,5 +158,10 @@ def rules_ts_dependencies(ts_version_from = None, ts_version = None, ts_integrit
         version_from = ts_version_from,
         integrity = ts_integrity,
         build_file = "@aspect_rules_ts//ts:BUILD.typescript",
+        build_file_substitutions = {
+            "bazel_worker_version": worker_lock.bazel_worker_version,
+            "google_protobuf_version": worker_lock.google_protobuf_version
+        },
         urls = ["https://registry.npmjs.org/typescript/-/typescript-{}.tgz"],
     )
+

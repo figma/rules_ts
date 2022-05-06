@@ -1,0 +1,16 @@
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
+
+ts_project(
+    name = "ts",
+    srcs = ["foo.ts"],
+    declaration = True,
+    supports_workers = True,
+)
+
+build_test(
+    name = "build_test",
+    targets = [
+        ":ts",
+    ],
+)
