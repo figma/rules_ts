@@ -3,7 +3,10 @@ load("@bazel_skylib//rules:build_test.bzl", "build_test")
 
 ts_project(
     name = "ts",
-    srcs = ["foo.ts"],
+    srcs = [
+        "foo.ts",
+        "dir/this.ts"
+    ],
     declaration = True,
     supports_workers = True,
 )

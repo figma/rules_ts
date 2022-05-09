@@ -1,5 +1,7 @@
 {
     "compilerOptions": {
-        "declaration": true
+        "declaration": true,
+        "extendedDiagnostics": true,
+        "noImplicitAny": false
     }
 }

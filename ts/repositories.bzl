@@ -5,7 +5,6 @@ See https://docs.bazel.build/versions/main/skylark/deploying.html#dependencies
 """
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("//ts/private:versions.bzl", TS_VERSIONS = "VERSIONS")
 
@@ -121,11 +120,13 @@ def rules_ts_dependencies(ts_version_from = None, ts_version = None, ts_integrit
     )
 
     maybe(
-        git_repository,
+        http_archive,
         name = "aspect_rules_js",
-        commit = "e68f60dcabb6c0d4190acf6c3d09076f7516778b",
-        remote = "https://github.com/aspect-build/rules_js.git",
+        sha256 = "6c3e47e35173ce2f8e523bfcae838eaf352483be21c125b6e942c6bae3744e6f",
+        strip_prefix = "rules_js-0.6.0",
+        url = "https://github.com/aspect-build/rules_js/archive/refs/tags/v0.6.0.tar.gz",
     )
+
 
     maybe(
         http_archive,
